@@ -11,34 +11,44 @@ const canvas = document.querySelector('canvas');
 const contexto = canvas.getContext('2d');
 
 // Plano de Fundo
-const planoDeFundo = {
-    sourceX: 390,
-    sourceY: 0,
-    largura: 275,
-    altura: 204,
-    x: 0,
-    y: canvas.height - 204,
-    desenha() {
-        contexto.fillStyle = '#70c5ce';
-        contexto.fillRect(0, 0, canvas.width, canvas.height);
+function criaPlanoDeFundo() {
+    const planoDeFundo = {
+        sourceX: 391,
+        sourceY: 0,
+        largura: 275,
+        altura: 204,
+        x: 0,
+        y: canvas.height - 204,
+        atualiza() {
+            const movimentoDoFundo = 1;
+            const repeteEm = planoDeFundo.largura / 2;
+            const movimentacao = planoDeFundo.x - movimentoDoFundo;
+            planoDeFundo.x = movimentacao % repeteEm;
+        },
+        desenha() {
+            contexto.fillStyle = '#70c5ce';
+            contexto.fillRect(0, 0, canvas.width, canvas.height);
 
-        contexto.drawImage(
-            sprites,
-            planoDeFundo.sourceX, planoDeFundo.sourceY, // Sprite X, Sprite Y
-            planoDeFundo.largura, planoDeFundo.altura, // Tamanho do recorte na sprite
-            (planoDeFundo.x + planoDeFundo.largura), planoDeFundo.y,
-            planoDeFundo.largura, planoDeFundo.altura
-        );
+            contexto.drawImage(
+                sprites,
+                planoDeFundo.sourceX, planoDeFundo.sourceY, // Sprite X, Sprite Y
+                planoDeFundo.largura, planoDeFundo.altura, // Tamanho do recorte na sprite
+                (planoDeFundo.x + planoDeFundo.largura), planoDeFundo.y,
+                planoDeFundo.largura, planoDeFundo.altura
+            );
 
-        contexto.drawImage(
-            sprites,
-            planoDeFundo.sourceX, planoDeFundo.sourceY, // Sprite X, Sprite Y
-            planoDeFundo.largura, planoDeFundo.altura, // Tamanho do recorte na sprite
-            planoDeFundo.x, planoDeFundo.y,
-            planoDeFundo.largura, planoDeFundo.altura
-        );
-    },
+            contexto.drawImage(
+                sprites,
+                planoDeFundo.sourceX, planoDeFundo.sourceY, // Sprite X, Sprite Y
+                planoDeFundo.largura, planoDeFundo.altura, // Tamanho do recorte na sprite
+                planoDeFundo.x, planoDeFundo.y,
+                planoDeFundo.largura, planoDeFundo.altura
+            );
+        },
+    };
+    return planoDeFundo;
 }
+
 
 // Chão
 function criaChao() {
@@ -50,7 +60,7 @@ function criaChao() {
         x: 0,
         y: canvas.height - 112,
         atualiza() {
-            const movimentoDoChao = 1;
+            const movimentoDoChao = 2;
             const repeteEm = chao.largura / 2;
             const movimentacao = chao.x - movimentoDoChao;
             chao.x = movimentacao % repeteEm;
@@ -105,7 +115,7 @@ function criaFlappyBird() {
                 somDeHIT.play();
                 setTimeout(() => {
                     mudaParaTela(Telas.INICIO);
-                }, 600);
+                }, 500);
                 return;
             }
             flappyBird.velocidade += flappyBird.gravidade;
@@ -168,6 +178,101 @@ const mensagemGetReady = {
     }
 };
 
+function criaCanos() {
+    const canos = {
+        largura: 52,
+        altura: 400,
+        chao: {
+            sourceX: 0,
+            sourceY: 169
+        },
+        ceu: {
+            sourceX: 52,
+            sourceY: 169
+        },
+        espaco: 80,
+        desenha() {
+            canos.pares.forEach(function(par) {
+                const yRandom = par.y;
+                const espacamentoEntreCanos = 90;
+
+                const canoCeuX = par.x;
+                const canoCeuY = yRandom;
+
+                contexto.drawImage(
+                    sprites,
+                    canos.ceu.sourceX, canos.ceu.sourceY,
+                    canos.largura, canos.altura,
+                    canoCeuX, canoCeuY,
+                    canos.largura, canos.altura,
+                )
+
+                const canoChaoX = par.x;
+                const canoChaoY = canos.altura + espacamentoEntreCanos + yRandom;
+                contexto.drawImage(
+                    sprites,
+                    canos.chao.sourceX, canos.chao.sourceY,
+                    canos.largura, canos.altura,
+                    canoChaoX, canoChaoY,
+                    canos.largura, canos.altura,
+                )
+
+                par.canoCeu = {
+                    x: canoCeuX,
+                    y: canos.altura + canoCeuY
+                }
+                par.canoChao = {
+                    x: canoChaoX,
+                    y: canoChaoY
+                }
+            })
+        },
+        temColisaoComFlappyBird(par) {
+            const cabecaDoFlappy = globais.flappyBird.y;
+            const peDoFlappy = globais.flappyBird.y + globais.flappyBird.altura;
+
+            if (globais.flappyBird.x >= par.x) {
+                if (cabecaDoFlappy <= par.canoCeu.y) {
+                    return true;
+                }
+
+                if (peDoFlappy >= par.canoChao.y) {
+                    return true;
+                }
+            }
+
+            return false;
+        },
+        pares: [],
+        atualiza() {
+            const passou100Frames = frames % 100 === 0;
+            if (passou100Frames) {
+                canos.pares.push({
+                    x: canvas.width,
+                    y: -150 * (Math.random() +1),
+                });
+            }
+
+            canos.pares.forEach(function(par) {
+                par.x = par.x - 2;
+
+                if (canos.temColisaoComFlappyBird(par)) {
+                    somDeHIT.play();
+                    setTimeout(() => {
+                        mudaParaTela(Telas.INICIO);
+                    }, 500);
+                    return;
+                }
+
+                if (par.x + canos.largura <= 0) {
+                    canos.pares.shift();
+                }
+            });
+        }
+    }
+    return canos;
+}
+
 //
 // Telas
 //
@@ -184,13 +289,15 @@ function mudaParaTela(novaTela) {
 const Telas = {
     INICIO: {
         inicializa() {
+            globais.planoDeFundo = criaPlanoDeFundo();
             globais.flappyBird = criaFlappyBird();
             globais.chao = criaChao();
+            globais.canos = criaCanos();
         },
         desenha() {
-            planoDeFundo.desenha();
-            globais.chao.desenha();
+            globais.planoDeFundo.desenha();
             globais.flappyBird.desenha();
+            globais.chao.desenha();
             mensagemGetReady.desenha();
         },
         click() {
@@ -198,13 +305,15 @@ const Telas = {
         },
         atualiza() {
             globais.chao.atualiza();
+            globais.planoDeFundo.atualiza();
         }
     }
 };
 
 Telas.JOGO = {
     desenha() {
-        planoDeFundo.desenha();
+        globais.planoDeFundo.desenha();
+        globais.canos.desenha();
         globais.chao.desenha();
         globais.flappyBird.desenha();
     },
@@ -212,6 +321,8 @@ Telas.JOGO = {
         globais.flappyBird.pula();
     },
     atualiza() {
+        globais.canos.atualiza();
+        globais.chao.atualiza();
         globais.flappyBird.atualiza();
     }
 };
